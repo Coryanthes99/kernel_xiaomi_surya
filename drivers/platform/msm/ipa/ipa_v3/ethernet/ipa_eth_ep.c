@@ -13,25 +13,51 @@
 #include <linux/if_vlan.h>
 
 #include "ipa_eth_i.h"
+#include "ipa_eth_trace.h"
+
+#ifndef IPA_ETH_EP_LOOPBACK
+static int __handle_ipa_receive(struct ipa_eth_channel *ch,
+				struct sk_buff *skb)
+{
+	if (!ch->process_skb) {
+		dev_kfree_skb_any(skb);
+		return NET_RX_DROP;
+	}
+
+	return ch->process_skb(ch, skb);
+}
+#else
+static int __handle_ipa_receive(struct ipa_eth_channel *ch,
+				struct sk_buff *skb)
+{
+	if (ipa_tx_dp(IPA_CLIENT_AQC_ETHERNET_CONS, skb, NULL)) {
+		dev_kfree_skb_any(skb);
+		return NET_RX_DROP;
+	}
+
+	ch->exception_loopback++;
+
+	return NET_RX_SUCCESS;
+}
+#endif
 
 static void handle_ipa_receive(struct ipa_eth_channel *ch,
 			       unsigned long data)
 {
-	bool success = false;
+	bool tracing = trace_lan_rx_skb_enabled();
 	struct sk_buff *skb = (struct sk_buff *) data;
 
 	ch->exception_total++;
 
-#ifndef IPA_ETH_EP_LOOPBACK
-	success = ch->process_skb && !ch->process_skb(ch, skb);
-#else
-	success = !ipa_tx_dp(IPA_CLIENT_AQC_ETHERNET_CONS, skb, NULL);
-	if (success)
-		ch->exception_loopback++;
-#endif
+	/* Keep skb from being freed until tracing is completed */
+	if (tracing)
+		skb_get(skb);
 
-	if (!success) {
+	if (__handle_ipa_receive(ch, skb) == NET_RX_DROP)
 		ch->exception_drops++;
+
+	if (tracing) {
+		trace_lan_rx_skb(ch, skb);
 		dev_kfree_skb_any(skb);
 	}
 }
@@ -543,6 +569,13 @@ void ipa_eth_ep_init_ctx(struct ipa_eth_channel *ch, bool vlan_mode)
 					IPA_SRC_NAT : IPA_BYPASS_NAT;
 	ep_ctx->cfg.hdr.hdr_len = vlan_mode ? VLAN_ETH_HLEN : ETH_HLEN;
 	ep_ctx->cfg.mode.mode = IPA_BASIC;
+
+	/* xlat config in vlan mode */
+	if (IPA_CLIENT_IS_PROD(ep_ctx->client) && vlan_mode) {
+		ep_ctx->cfg.hdr.hdr_ofst_metadata_valid = 1;
+		ep_ctx->cfg.hdr.hdr_ofst_metadata = ETH_HLEN;
+		ep_ctx->cfg.hdr.hdr_metadata_reg_valid = false;
+	}
 }
 
 /**
