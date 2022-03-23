@@ -1,5 +1,5 @@
 #!/bin/bash
-#
+##
 # Copyright (C) 2022 Stratosphere.
 # All rights reserved.
 
