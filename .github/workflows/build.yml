@@ -1,0 +1,31 @@
+name: Build Kernel on Github Actions
+
+on:
+  push:
+  
+permissions: read-all
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    container:
+      image: panchajanya1999/archlinux:latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup env
+        run: pacman -Syu --needed --noconfirm wget base-devel xmlto inetutils bc cpio python-sphinx python-sphinx_rtd_theme graphviz imagemagick git python2 python zip github-cli
+      - name: Build Orchid-Q Kernel
+        env:
+          AUTH_TOKEN:  ${{ secrets.AUTH_TOKEN }}
+          TG_TOKEN:  ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID:  ${{ secrets.TG_CHAT_ID }}
+          BUILD_HOST:  ${{ secrets.BUILD_HOST }}
+          BUILD_NAME:  ${{ secrets.BUILD_NAME }}
+        run: |
+          bash kernel-build.sh
+      - name: Store Kernel Package as Artifact
+        uses: actions/upload-artifact@v2
+        with:
+         name: Flashable zip
+         path: AnyKernel3/package.zip
