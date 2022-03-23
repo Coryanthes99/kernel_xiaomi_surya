@@ -1,4 +1,4 @@
-name: Build Kernel on Github Actions
+name: Build Kernel on Github Action
 
 on:
   push:
