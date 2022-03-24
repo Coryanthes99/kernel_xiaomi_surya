@@ -23,7 +23,7 @@ jobs:
           BUILD_HOST:  ${{ secrets.BUILD_HOST }}
           BUILD_NAME:  ${{ secrets.BUILD_NAME }}
         run: |
-          bash kernel-build.sh
+          bash kbuild.sh
       - name: Store Kernel Package as Artifact
         uses: actions/upload-artifact@v2
         with:
