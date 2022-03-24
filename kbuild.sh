@@ -4,11 +4,12 @@
 # All rights reserved.
 
 # Clone the repositories
-git clone --depth 1 https://github.com/kdrag0n/proton-clang.git clang
+git clone --depth 1 -b master https://github.com/kdrag0n/proton-clang.git clang
 git clone --depth 1 -b surya https://github.com/fakeriz/AnyKernel3
-git clone --depth 1 https://github.com/fakeriz/Orchid-Canaries
+git clone --depth 1 -b orchid https://github.com/fakeriz/Orchid-Canaries
 
 # Export Environment Variables. 
+export TZ=Asia/Jakarta
 export DATE=$(TZ=Asia/Jakarta date +"%d-%m-%Y-%I-%M")
 export PATH="$(pwd)/clang/bin:$PATH"
 # export PATH="$TC_DIR/bin:$HOME/gcc-arm/bin${PATH}"
@@ -19,7 +20,7 @@ export ARCH=arm64
 export CROSS_COMPILE=aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 export LD_LIBRARY_PATH=$TC_DIR/lib
-export KBUILD_BUILD_USER=$BUILD_USER
+export KBUILD_BUILD_USER=$BUILD_NAME
 export KBUILD_BUILD_HOST=$BUILD_HOST
 export USE_HOST_LEX=yes
 export KERNEL_IMG=output/arch/arm64/boot/Image
@@ -29,15 +30,7 @@ export DEFCONFIG=surya-perf_defconfig
 export ANYKERNEL_DIR=$(pwd)/AnyKernel3/
 export TC_DIR=$(pwd)/clang/
 
-# Versioning
-versioning() {
-    cat arch/arm64/configs/"${DEFCONFIG}" | grep CONFIG_LOCALVERSION= | tee /mnt/workdir/name.sh
-    sed -i 's/-Orchid-Q-//g' /mnt/workdir/name.sh
-    source /mnt/workdir/name.sh
-}
-
 # Costumize
-versioning
 KERNEL="Orchid-Q"
 DEVICE="Surya"
 KERNELREV="Rev.0.1"
@@ -131,18 +124,18 @@ cp "$KERNEL_DTBO" "$ANYKERNEL_DIR"
 cd AnyKernel3
 zip -r9 UPDATE-AnyKernel2.zip * -x README.md LICENSE UPDATE-AnyKernel2.zip zipsigner.jar
 cp UPDATE-AnyKernel2.zip package.zip
-cp UPDATE-AnyKernel2.zip Orchid-Q-$GITHUB_RUN_ID-$GITHUB_RUN_NUMBER.zip
+cp UPDATE-AnyKernel2.zip $ZIPNAME
 BUILD_END=$(date +"%s")
 DIFF=$((BUILD_END - BUILD_START))
-tg_post_build "Orchid-Q-$GITHUB_RUN_ID-$GITHUB_RUN_NUMBER.zip" "Build took : $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
+tg_post_build "$ZIPNAME" "Build took : $((DIFF / 60)) minute(s) and $((DIFF % 60)) second(s)"
 
 
 # Upload Flashable zip to tmp.ninja and uguu.se
 # curl -i -F files[]=@Orchid-Q-"$GITHUB_RUN_ID"-"$GITHUB_RUN_NUMBER".zip https://uguu.se/upload.php
 # curl -i -F files[]=@Orchid-Q-"$GITHUB_RUN_ID"-"$GITHUB_RUN_NUMBER".zip https://tmp.ninja/upload.php?output=text
 
-#cp Orchid-Q-$GITHUB_RUN_ID-$GITHUB_RUN_NUMBER.zip ../Orchid-Canaries/
-#cd ../Orchid-Canaries/
+cp $ZIPNAME ../Orchid-Canaries/
+cd ../Orchid-Canaries/
 
 # Upload Flashable Zip to GitHub Releases <3
-#gh release create earlyaccess-$DATE "Orchid-Q-"$GITHUB_RUN_ID"-"$GITHUB_RUN_NUMBER.zip"" -F releasenotes.md -p -t "Orchid-Q Kernel: Automated Build"
+gh release create early-$DATE "$ZIPNAME" -F releasenotes.md -p -t "Orchid-Q Kernel: Automated Build"
