@@ -6,15 +6,15 @@
 # Init
 KERNEL_DIR="${PWD}"
 cd "$KERNEL_DIR" || exit
-DTB_TYPE="" # define as "single" if want use single file
+DTB_TYPE="single" # define as "single" if want use single file
 KERN_IMG=/root/project/kernel_xiaomi_surya/out/arch/arm64/boot/Image.gz-dtb   # if use single file define as Image.gz-dtb instead
-KERN_DTB="${KERNEL_DIR}"/out/arch/arm64/boot/dtbo.img       # and comment this variable
+# KERN_DTB="${KERNEL_DIR}"/out/arch/arm64/boot/dtbo.img       # and comment this variable
 ANYKERNEL="${HOME}"/anykernel
 LOGS="${HOME}"/${CHEAD}.log
 
 # Repo URL
 ANYKERNEL_REPO="https://github.com/dekukamikix/anykernel3.git"
-ANYKERNEL_BRANCH="master"
+ANYKERNEL_BRANCH="meme"
 
 # Repo info
 PARSE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
@@ -26,14 +26,18 @@ LOGS_URL="[See Circle CI Build Logs Here](https://circleci.com/gh/Coryanthes99/k
 
 # Compiler
 mkdir -p "/mnt/workdir/proton-clang"
+mkdir -p "/mnt/workdir/aarch64-elf-gcc"
+mkdir -p "/mnt/workdir/arm-eabi-gcc"
 COMP_TYPE="clang" # unset if want to use gcc as compiler
 CLANG_DIR="/mnt/workdir/proton-clang"
 CLANG_URL="https://github.com/silont-project/silont-clang/archive/20210117.tar.gz"
-GCC_DIR="" # Doesn't needed if use proton-clang
-GCC32_DIR="" # Doesn't needed if use proton-clang
+GCC_DIR="/mnt/workdir/aarch64-elf-gcc" # Doesn't needed if use proton-clang
+GCC32_DIR="/mnt/workdir/arm-eabi-gcc" # Doesn't needed if use proton-clang
 CLANG_FILE="/mnt/workdir/clang.tar.gz"
 
 git clone https://github.com/kdrag0n/proton-clang.git --depth=1 --single-branch $CLANG_DIR -b master
+#git clone https://github.com/silont-project/aarch64-elf-gcc.git --depth=1 --single-branch $GCC_DIR -b arm64/10
+#git clone https://github.com/silont-project/arm-eabi-gcc.git --depth=1 --single-branch $GCC32_DIR -b arm/10
 
 if [[ "${COMP_TYPE}" =~ "clang" ]]; then
     CSTRING=$("$CLANG_DIR"/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
@@ -116,7 +120,8 @@ build_failed() {
 # Building
 makekernel() {
     sed -i "s/${KERNELTYPE}/${KERNELTYPE}/g" "${KERNEL_DIR}/arch/arm64/configs/${DEFCONFIG}"
-    echo "Fakeriz@Circle-CI" > "$KERNEL_DIR"/.builderdata
+    export KBUILD_BUILD_USER="Fakeriz"
+    export KBUILD_BUILD_HOST="Circle-CI"
     export PATH="${COMP_PATH}"
     make O=out ARCH=arm64 ${DEFCONFIG} savedefconfig
     if [[ "${REGENERATE_DEFCONFIG}" =~ "true" ]]; then
@@ -125,7 +130,7 @@ makekernel() {
     if [[ "${COMP_TYPE}" =~ "clang" ]]; then
         make -j$(nproc --all) CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- O=out ARCH=arm64 LLVM=1 2>&1 LD=ld.lld | tee "$LOGS"
     else
-      	make -j$(nproc --all) O=out ARCH=arm64 CROSS_COMPILE="${GCC_DIR}/bin/aarch64-elf-" CROSS_COMPILE_ARM32="${GCC32_DIR}/bin/arm-eabi-"
+      	make -j$(nproc --all) O=out ARCH=arm64 CROSS_COMPILE="${GCC_DIR}/bin/aarch64-elf-" CROSS_COMPILE_ARM32="${GCC32_DIR}/bin/arm-eabi-" | tee "$LOGS"
     fi
     # Check If compilation is success
     packingkernel
